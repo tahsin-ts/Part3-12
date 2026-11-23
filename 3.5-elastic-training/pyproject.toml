@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "elastic-train"
+version = "1.0.0"
+description = "Fault-tolerant elastic data-parallel training: rendezvous with leases and generations, node agents, fenced checkpoints, fault injection"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = ["numpy>=1.24"]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[project.scripts]
+elastic = "elastic.cli:main"
+
+[tool.setuptools]
+packages = ["elastic"]

@@ -1,0 +1,36 @@
+name: 3.2-parameter-server
+
+on:
+  push:
+    paths: ['3.2-parameter-server/**', '.github/workflows/3.2-parameter-server.yml']
+  pull_request:
+    paths: ['3.2-parameter-server/**', '.github/workflows/3.2-parameter-server.yml']
+
+defaults:
+  run:
+    working-directory: 3.2-parameter-server
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy pytest
+      - run: test -z "$(gofmt -l .)"
+      - run: make test
+      - run: make demo
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t paramserver:ci .
+      - name: smoke test (2 shards + 4 workers in one container)
+        run: docker run --rm --entrypoint python paramserver:ci -m pskit train --steps 50

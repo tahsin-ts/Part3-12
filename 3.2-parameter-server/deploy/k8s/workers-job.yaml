@@ -1,0 +1,21 @@
+# Training workers: an Indexed Job gives each pod JOB_COMPLETION_INDEX = 0..3 (the worker id).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ps-workers
+spec:
+  completions: 4
+  parallelism: 4
+  completionMode: Indexed
+  backoffLimit: 8            # a crashed worker pod is recreated and rejoins with the same id
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: worker
+          image: paramserver:latest
+          command: ["python", "-m", "pskit", "worker"]
+          args: ["--servers=ps-0.ps:7000,ps-1.ps:7000", "--workers=4", "--mode=ssp",
+                 "--staleness=2", "--steps=2000"]
+          resources:
+            requests: {cpu: "1", memory: 1Gi}

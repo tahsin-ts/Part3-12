@@ -1,0 +1,47 @@
+name: 3.1-ddp-ring-allreduce
+
+on:
+  push:
+    paths: ['3.1-ddp-ring-allreduce/**', '.github/workflows/3.1-ddp-ring-allreduce.yml']
+  pull_request:
+    paths: ['3.1-ddp-ring-allreduce/**', '.github/workflows/3.1-ddp-ring-allreduce.yml']
+
+defaults:
+  run:
+    working-directory: 3.1-ddp-ring-allreduce
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.10', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install numpy pytest
+      - run: make test
+      - run: make demo
+
+  torch-reference:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy pytest torch --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
+      - run: PYTHONPATH=src python -m pytest -v tests/test_torch_reference.py
+      - run: torchrun --nproc_per_node 2 bench/torch_allreduce.py --backend gloo
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t ringddp:ci .
+      - run: docker run --rm ringddp:ci check --workers-list 1,2
+      - run: docker run --rm ringddp:ci train --workers 2 --epochs 1

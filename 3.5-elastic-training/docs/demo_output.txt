@@ -1,0 +1,16 @@
+$ python -m elastic demo --scenario kill-node
+== kill-node  (agent exit codes {'n1': 0, 'n2': 0, 'n3': -9})
+wall 6.11 s | steps run 302 (unique 300, redone 2) | generations 2 worlds [3, 2]
+  gen 1: world 3  steps   0-121   12.87 ms/step
+  gen 2: world 2  steps 120-299   12.92 ms/step
+  fault kill_node on n3 at step 121: detected +1.36s new round +1.91s training again +2.05s world 2 resumed at 120, lost 2 steps
+fenced requests 2, fenced worker exits 2 | checkpoint 2.36 ms (10072 B) | final digest 13d3de2fef9f4fb6 acc 0.9182
+
+$ python -m elastic demo --scenario pause
+== pause  (agent exit codes {'n1': 0, 'n2': 0, 'n3': 0})
+wall 6.41 s | steps run 319 (unique 300, redone 19) | generations 3 worlds [3, 2, 3]
+  gen 1: world 3  steps   0-120   12.96 ms/step
+  gen 2: world 2  steps 120-277   12.33 ms/step
+  gen 3: world 3  steps 260-299   12.54 ms/step
+  fault pause on n3 at step 120: detected +1.36s new round +1.91s training again +2.04s world 2 resumed at 120, lost 1 steps
+fenced requests 5, fenced worker exits 4 | checkpoint 3.14 ms (10072 B) | final digest 13d3de2fef9f4fb6 acc 0.9182

@@ -1,0 +1,41 @@
+# Four ranks on four pods. The headless Service gives each pod a stable DNS name:
+#   ringddp-<index>.ringddp.<namespace>.svc  (Indexed Job + subdomain)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ringddp
+spec:
+  clusterIP: None
+  selector:
+    job-name: ringddp
+  ports:
+    - name: ring
+      port: 29500
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ringddp
+spec:
+  completionMode: Indexed
+  completions: 4
+  parallelism: 4
+  backoffLimit: 0            # one rank fails -> the job fails; restart from a checkpoint instead
+  activeDeadlineSeconds: 900
+  template:
+    spec:
+      subdomain: ringddp
+      restartPolicy: Never
+      containers:
+        - name: worker
+          image: ghcr.io/tahsin-ts/ringddp:latest
+          command: ["sh", "-c"]
+          args:
+            - >-
+              exec ringddp worker --rank "$JOB_COMPLETION_INDEX" --epochs 3 --timeout 60
+              --peers ringddp-0.ringddp:29500,ringddp-1.ringddp:29500,ringddp-2.ringddp:29500,ringddp-3.ringddp:29500
+          ports:
+            - containerPort: 29500
+          resources:
+            requests: {cpu: "1", memory: 512Mi}
+            limits: {cpu: "1", memory: 1Gi}

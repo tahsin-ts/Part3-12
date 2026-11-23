@@ -1,0 +1,63 @@
+# Coordinator (1 replica: it holds the rendezvous state in memory) + 3 training nodes.
+# Scale the job with: kubectl scale statefulset elastic-node --replicas=4   (between --min-nodes and --max-nodes)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elastic-rdzv
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app: elastic-rdzv}}
+  template:
+    metadata: {labels: {app: elastic-rdzv}}
+    spec:
+      containers:
+        - name: rdzv
+          image: elastic-train:1.0.0
+          args: ["server", "--host", "0.0.0.0", "--port", "29400", "--min-nodes", "2", "--max-nodes", "4", "--lease-ttl", "10"]
+          ports: [{containerPort: 29400}]
+          readinessProbe: {httpGet: {path: /healthz, port: 29400}, periodSeconds: 5}
+          resources: {requests: {cpu: 100m, memory: 64Mi}, limits: {memory: 256Mi}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elastic-rdzv
+spec:
+  selector: {app: elastic-rdzv}
+  ports: [{port: 29400, targetPort: 29400}]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elastic-node
+spec:
+  serviceName: elastic-node
+  replicas: 3
+  podManagementPolicy: Parallel
+  selector: {matchLabels: {app: elastic-node}}
+  template:
+    metadata: {labels: {app: elastic-node}}
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: agent
+          image: elastic-train:1.0.0
+          env:
+            - name: NODE_NAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+          args: ["agent", "--endpoint", "elastic-rdzv:29400", "--node", "$(NODE_NAME)", "--nproc", "2",
+                 "--ckpt-dir", "/ckpt", "--steps", "100000", "--ckpt-every", "200", "--lease-ttl", "10", "--hb-interval", "2"]
+          volumeMounts: [{name: ckpt, mountPath: /ckpt}]
+          resources: {requests: {cpu: "2", memory: 1Gi}, limits: {memory: 2Gi}}
+      volumes:
+        - name: ckpt
+          persistentVolumeClaim: {claimName: elastic-ckpt}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: elastic-ckpt
+spec:
+  accessModes: [ReadWriteMany]          # every node reads the checkpoint after a restart
+  resources: {requests: {storage: 5Gi}}

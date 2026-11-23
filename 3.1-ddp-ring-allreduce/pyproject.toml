@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ringddp"
+version = "1.0.0"
+description = "Data-parallel training from scratch: ring all-reduce over TCP, gradient buckets, overlap"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24"]
+license = {text = "MIT"}
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[project.scripts]
+ringddp = "ringddp.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

@@ -1,0 +1,64 @@
+# A shard store served over HTTP (range requests) and a loader Job that streams from it.
+# The init container writes a synthetic dataset; in production the shards live in S3/GCS and the
+# store Deployment is not needed: point the loader at the bucket's HTTP endpoint instead.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shard-store
+  labels: {app: shard-store}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: shard-store}
+  template:
+    metadata:
+      labels: {app: shard-store}
+    spec:
+      initContainers:
+        - name: make-data
+          image: streamload:latest
+          args: ["make-data", "/data/ds", "--records", "20000", "--side", "64", "--per-shard", "500"]
+          volumeMounts: [{name: data, mountPath: /data}]
+      containers:
+        - name: store
+          image: streamload:latest
+          args: ["serve", "/data/ds", "--host", "0.0.0.0", "--port", "8000", "--latency-ms", "5"]
+          ports: [{containerPort: 8000}]
+          readinessProbe:
+            httpGet: {path: /manifest.json, port: 8000}
+          resources:
+            requests: {cpu: "500m", memory: 256Mi}
+          volumeMounts: [{name: data, mountPath: /data}]
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shard-store
+spec:
+  selector: {app: shard-store}
+  ports: [{port: 8000, targetPort: 8000}]
+---
+# Two data-parallel ranks as an Indexed Job: each pod reads only its own shards (rank = completion index).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: loader-ranks
+spec:
+  completions: 2
+  parallelism: 2
+  completionMode: Indexed
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: loader
+          image: streamload:latest
+          command: ["sh", "-c"]
+          args: ["streamload read http://shard-store:8000 --workers 2 --prefetch 4 --world 2 --rank $JOB_COMPLETION_INDEX"]
+          resources:
+            requests: {cpu: "2", memory: 1Gi}
+            limits: {cpu: "2", memory: 2Gi}

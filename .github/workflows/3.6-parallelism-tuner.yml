@@ -1,0 +1,35 @@
+name: 3.6-parallelism-tuner
+
+on:
+  push:
+    paths: ['3.6-parallelism-tuner/**', '.github/workflows/3.6-parallelism-tuner.yml']
+  pull_request:
+    paths: ['3.6-parallelism-tuner/**', '.github/workflows/3.6-parallelism-tuner.yml']
+
+defaults:
+  run:
+    working-directory: 3.6-parallelism-tuner
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install numpy pytest
+      - run: python -m pytest -q
+      - run: make demo validate
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t ptuner .
+      - run: docker run --rm ptuner validate
+      - run: docker run --rm ptuner search --model gpt3-1.3b --cluster rtx4090 --gpus 2 --batch 64 --top 3

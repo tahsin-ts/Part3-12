@@ -1,0 +1,47 @@
+[
+ {
+  "bucket_kb": 0,
+  "overlap": false,
+  "buckets": 1,
+  "step_ms": 74.60691012499865,
+  "compute_ms": 49.60296081250082,
+  "wait_ms": 18.01882693749768,
+  "comm_ms": 17.52246196874907
+ },
+ {
+  "bucket_kb": 0,
+  "overlap": true,
+  "buckets": 1,
+  "step_ms": 98.68522768749877,
+  "compute_ms": 65.15134709375215,
+  "wait_ms": 23.370938968750643,
+  "comm_ms": 22.25165459375411
+ },
+ {
+  "bucket_kb": 64,
+  "overlap": true,
+  "buckets": 6,
+  "step_ms": 78.34930543749863,
+  "compute_ms": 63.66189737499983,
+  "wait_ms": 5.850367437498782,
+  "comm_ms": 35.39279812499707
+ },
+ {
+  "bucket_kb": 256,
+  "overlap": true,
+  "buckets": 6,
+  "step_ms": 64.81876331250014,
+  "compute_ms": 53.96736968750293,
+  "wait_ms": 4.778634281247918,
+  "comm_ms": 28.671558593743818
+ },
+ {
+  "bucket_kb": 1024,
+  "overlap": true,
+  "buckets": 6,
+  "step_ms": 76.66217250000074,
+  "compute_ms": 63.52353587500126,
+  "wait_ms": 5.842581968751759,
+  "comm_ms": 34.48604628125196
+ }
+]

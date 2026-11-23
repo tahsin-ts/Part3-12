@@ -1,0 +1,14 @@
+$ ackpt demo
+training on 4 ranks, async checkpoint every 10 steps -> /tmp/ackpt-demo
+  step  10  loss 0.38525  checkpoint stall   5.47 ms
+  step  20  loss 0.35419  checkpoint stall   0.74 ms
+  step  30  loss 0.32567  checkpoint stall   0.80 ms
+  step  40  loss 0.29810  checkpoint stall   0.68 ms
+committed checkpoints: [30, 40]   (keep_last=2 removed the rest)
+CRASH: all in-memory state lost; restarting on 2 ranks instead of 4
+resumed at step 40 from 2 ranks
+step 60: resumed run == uninterrupted run, bit for bit: True
+$ ackpt crash-test
+mid_shard        exit   -9 (SIGKILL = -9)  latest loadable step: 10  step-20 debris files: 3
+before_manifest  exit   -9 (SIGKILL = -9)  latest loadable step: 10  step-20 debris files: 4
+mid_manifest     exit   -9 (SIGKILL = -9)  latest loadable step: 10  step-20 debris files: 5

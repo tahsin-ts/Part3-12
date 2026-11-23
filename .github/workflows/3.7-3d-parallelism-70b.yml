@@ -1,0 +1,36 @@
+name: 3.7-3d-parallelism-70b
+
+on:
+  push:
+    paths: ['3.7-3d-parallelism-70b/**', '.github/workflows/3.7-3d-parallelism-70b.yml']
+  pull_request:
+    paths: ['3.7-3d-parallelism-70b/**', '.github/workflows/3.7-3d-parallelism-70b.yml']
+
+defaults:
+  run:
+    working-directory: 3.7-3d-parallelism-70b
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.10', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install numpy pytest
+      - run: make test
+      - run: make demo
+      - run: make plan
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t threed:ci .
+      - run: docker run --rm threed:ci train --grid 2x2x2 --steps 4
+      - run: docker run --rm threed:ci plan --hw h100 --gpus 64 1024

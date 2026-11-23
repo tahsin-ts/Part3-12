@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ackpt"
+version = "0.1.0"
+description = "Asynchronous, sharded, atomic checkpoints with resharding and crash safety"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24"]
+license = {text = "MIT"}
+
+[project.scripts]
+ackpt = "ackpt.cli:main"
+
+[tool.setuptools]
+packages = ["ackpt"]

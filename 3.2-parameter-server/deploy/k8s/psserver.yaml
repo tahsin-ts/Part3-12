@@ -1,0 +1,40 @@
+# Parameter-server shards: a StatefulSet gives stable names (ps-0, ps-1, ...),
+# so a restarted pod keeps its shard index and its snapshot volume.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ps
+spec:
+  clusterIP: None            # headless: one DNS name per pod (ps-0.ps, ps-1.ps)
+  selector: {app: ps}
+  ports: [{name: http, port: 7000}]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ps
+spec:
+  serviceName: ps
+  replicas: 2
+  podManagementPolicy: Parallel
+  selector: {matchLabels: {app: ps}}
+  template:
+    metadata: {labels: {app: ps}}
+    spec:
+      terminationGracePeriodSeconds: 30   # SIGTERM -> final snapshot
+      containers:
+        - name: psserver
+          image: paramserver:latest
+          args: ["-addr=:7000", "-id-from-hostname", "-shards=2", "-workers=4",
+                 "-snapshot=/data/shard.snap", "-snapshot-every=30s", "-worker-timeout=20s"]
+          ports: [{containerPort: 7000}]
+          readinessProbe: {httpGet: {path: /healthz, port: 7000}, periodSeconds: 2}
+          resources:
+            requests: {cpu: "1", memory: 1Gi}
+            limits: {memory: 2Gi}
+          volumeMounts: [{name: data, mountPath: /data}]
+  volumeClaimTemplates:
+    - metadata: {name: data}
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: {requests: {storage: 1Gi}}

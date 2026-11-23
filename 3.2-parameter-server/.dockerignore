@@ -1,0 +1,7 @@
+bin
+docs
+tests
+deploy
+*.json
+__pycache__
+.pytest_cache

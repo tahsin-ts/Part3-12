@@ -1,0 +1,34 @@
+# Run the tuner as a pre-flight Job before a training job is submitted.
+# It needs no GPU: it only evaluates models of memory and step time.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ptuner-cluster
+data:
+  cluster.json: |
+    {"name": "prod-a100", "gpus": 64, "gpus_per_node": 8, "mem_gib": 80, "peak_tflops": 312,
+     "hbm_gbs": 2039, "intra_gbs": 230, "inter_gbs": 22, "intra_alpha_us": 5, "inter_alpha_us": 15}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ptuner-preflight
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: ptuner
+          image: ghcr.io/tahsin-ts/ptuner:1.0.0
+          args: ["search", "--model", "gpt3-175b", "--cluster-file", "/config/cluster.json",
+                 "--batch", "1536", "--json", "--top", "5"]
+          resources:
+            requests: {cpu: "250m", memory: "128Mi"}
+            limits: {cpu: "1", memory: "256Mi"}
+          volumeMounts:
+            - {name: cluster, mountPath: /config, readOnly: true}
+      volumes:
+        - name: cluster
+          configMap: {name: ptuner-cluster}

@@ -1,0 +1,32 @@
+name: 3.4-async-checkpointing
+on:
+  push:
+    paths: ['3.4-async-checkpointing/**', '.github/workflows/3.4-async-checkpointing.yml']
+  pull_request:
+    paths: ['3.4-async-checkpointing/**', '.github/workflows/3.4-async-checkpointing.yml']
+defaults:
+  run:
+    working-directory: 3.4-async-checkpointing
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.10', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install numpy pytest
+      - run: python -m pytest -q
+      - run: python -m ackpt demo
+      - run: python -m ackpt crash-test
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t ackpt:ci .
+      - run: docker run --rm ackpt:ci demo --dir /tmp/ck
+      - run: docker run --rm --entrypoint python ackpt:ci -m pytest -q tests

@@ -1,0 +1,55 @@
+name: 3.5-elastic-training
+
+on:
+  push:
+    paths: ['3.5-elastic-training/**', '.github/workflows/3.5-elastic-training.yml']
+  pull_request:
+    paths: ['3.5-elastic-training/**', '.github/workflows/3.5-elastic-training.yml']
+
+defaults:
+  run:
+    working-directory: 3.5-elastic-training
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.10', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install numpy pytest
+      - run: python -m pytest -q
+      - run: python -m elastic demo --scenario kill-node --steps 150
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t elastic-train:ci .
+      - name: smoke test (coordinator answers /healthz)
+        run: |
+          docker run -d --name rdzv -p 29400:29400 elastic-train:ci
+          for i in $(seq 1 20); do curl -sf localhost:29400/healthz && break; sleep 1; done
+          curl -sf localhost:29400/status
+          docker rm -f rdzv
+
+  torchrun-cpu:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: torchrun elastic (1-2 nodes, gloo), one injected crash
+        run: |
+          torchrun --nnodes=1:2 --nproc-per-node=2 --max-restarts=2 --rdzv-backend=c10d \
+            --rdzv-endpoint=localhost:29400 --rdzv-id=ci --rdzv-conf=last_call_timeout=1 \
+            examples/torch_elastic.py --ckpt /tmp/tckpt 2>&1 | tee torchrun.log
+          grep -q "attempt 1" torchrun.log
+          grep -q "done at step 60" torchrun.log
