@@ -57,12 +57,12 @@ def test_training_survives_a_shard_restart(psserver, tmp_path):
     with Shards(2, 2, base=7700, snapdir=str(tmp_path), snapshot_every="100ms") as sh:
         def chaos(t0):
             def go():
-                time.sleep(0.4)
+                time.sleep(0.05)  # early, so even a fast machine is still training
                 sh.kill(0)
                 time.sleep(0.3)
                 sh.start(0)
             threading.Thread(target=go, daemon=True).start()
-        r = train(sh.addrs, workers=2, steps=200, staleness=2, on_step=chaos)
+        r = train(sh.addrs, workers=2, steps=400, staleness=2, on_step=chaos)
     assert r["retries"] > 0  # workers did hit the dead shard
     assert r["test_loss"] < 0.5
 
